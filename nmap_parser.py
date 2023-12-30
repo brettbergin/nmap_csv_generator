@@ -1,17 +1,27 @@
 #!/usr/bin env python3
 
+import argparse
 import pandas as pd
 import xml.etree.ElementTree as ET
 
 
-NMAP_XML_FILE = 'nmap_output.xml'
-JSON_FILE = 'nmap_output.json'
-CSV_FILE = 'nmap_output.csv'
+def fetch_args():
+    parser = argparse.ArgumentParser(description="NMAP XML to CVS Parser.")
+
+    parser.add_argument(
+        "--xml_file", "-f", type=str, help="The XML input file (required)"
+    )
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--csv", "-c", type=str, help="The CSV output file")
+    group.add_argument("--json", "-j", type=str, help="The JSON output file")
+
+    return parser.parse_args()
 
 
 def parse_nmap_xml(root):
     scan_results = []
-    
+
     for host in root.findall("host"):
         _h = {}
 
@@ -60,7 +70,7 @@ def parse_nmap_xml(root):
                 if cpe is not None:
                     cpe_text_data = cpe.text.replace("\t", "").replace("\n", "")
                     _p["service_cpe"] = "{}".format(cpe_text_data or "")
-            
+
             port_list.append(_p)
 
         _h["port_list"] = port_list
@@ -70,20 +80,27 @@ def parse_nmap_xml(root):
 
 
 def main():
-    tree = ET.parse(NMAP_XML_FILE)
+    args = fetch_args()
+    if not args.xml_file:
+        raise Exception("User did not provide XML argmuent.")
+
+    tree = ET.parse(args.xml_file)
     root = tree.getroot()
 
     df1 = parse_nmap_xml(root)
 
-    df2 = df1.explode('port_list')
-    df2 = df2['port_list'].apply(pd.Series)
+    df2 = df1.explode("port_list")
+    df2 = df2["port_list"].apply(pd.Series)
 
     df3 = df1.join(df2)
-    df3 = df3.drop('port_list', axis=1)
-    
-    df3.to_csv(CSV_FILE, index=False)
-    df3.to_json(JSON_FILE, index=False, indent=2)
+    df3 = df3.drop("port_list", axis=1)
+
+    if args.csv:
+        df3.to_csv(args.csv, index=False)
+
+    if args.json:
+        df3.to_json(args.json, indent=2, index=False, orient="table")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
