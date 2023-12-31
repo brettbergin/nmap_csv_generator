@@ -19,8 +19,8 @@ to export the scan results into a CSV file or a JSON file. One of these
 must be specified.
 ```
 python nmap_parser.py -f scan_results.xml -c output.csv
-python nmap_parser.py --xml_file=output.xml --csv=output.csv
+python nmap_parser.py --xml_file=scan_results.xml --csv=output.csv
 
 python nmap_parser.py -f scan_results.xml -j output.json
-python nmap_parser.py --xml_file= output.xml --json=output.json
+python nmap_parser.py --xml_file=scan_results.xml --json=output.json
 ```
