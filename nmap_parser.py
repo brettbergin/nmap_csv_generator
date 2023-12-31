@@ -63,11 +63,12 @@ Example XML Document Schema:
 import argparse
 import datetime
 import xml.etree.ElementTree as ET
+from typing import Tuple, List, Dict, Union
 
 import pandas as pd
 
 
-def fetch_args() -> argparse.ArgumentParser:
+def fetch_args() -> argparse.Namespace:
     """
     This function parses the command line arguments
     provided by the user and returns the parsed arguments
@@ -90,7 +91,7 @@ def fetch_args() -> argparse.ArgumentParser:
     return parser.parse_args()
 
 
-def parse_nmap_xml(root: str) -> pd.DataFrame:
+def parse_nmap_xml(root: ET.Element) -> pd.DataFrame:
     """
     This function iterates over all of the host
     objects in the XML document. For each host,
@@ -108,7 +109,7 @@ def parse_nmap_xml(root: str) -> pd.DataFrame:
     scan_results: list = []
 
     for host in root.findall("host"):
-        _h: dict = {}
+        _h: Dict[str, Union[str, List[Dict[str, str]]]] = {}
 
         status = host.find("status")
         if status is not None:
@@ -135,7 +136,7 @@ def parse_nmap_xml(root: str) -> pd.DataFrame:
 
         port_list: list = []
         for port in host.findall(".//port"):
-            _p: dict = {}
+            _p: Dict[str, str] = {}
             _p["protocol"] = port.get("protocol") or "N/A"
             _p["port"] = port.get("portid") or "N/A"
 
@@ -164,7 +165,7 @@ def parse_nmap_xml(root: str) -> pd.DataFrame:
     return pd.DataFrame(scan_results)
 
 
-def get_xml_tree_root(xmlfile: str):
+def get_xml_tree_root(xmlfile: str) -> ET.Element:
     """_summary_
 
     Args:
@@ -190,7 +191,7 @@ def get_xml_tree_root(xmlfile: str):
         raise Exception(f'Unknown Error Parsing XML file: {err}') from err
 
 
-def transform_data(data: str, run_time: str) -> pd.DataFrame:
+def transform_data(data: ET.Element, run_time: str) -> pd.DataFrame:
     """
     This function performs multiple things:
     1. Calls the function that parses the XML and returns a pandas dataframe.
@@ -200,26 +201,34 @@ def transform_data(data: str, run_time: str) -> pd.DataFrame:
     4. removes the redundant 'port_list' column thats no longer required.
 
     Args:
-        data (_type_): XML document as a string.
-        run_time (_type_): datetime.datetime.now() as a string.
+        - data (ET.Element): Root element of the parsed XML document.
+        - run_time (str): Current time as a string.
 
     Returns:
         _type_: returns a pd.Dataframe of the transformed data.
     """
+    # Create a dataframe from the nmap xml file data.    
+    df: pd.DataFrame = parse_nmap_xml(data)
+    
+    # Add a column 'run_time' so we know when this script was ran.
+    df["run_time"] = run_time
 
-    df1: pd.DataFrame = parse_nmap_xml(data)
-    df1["run_time"] = run_time
+    # Explode the 'port_list' column
+    exploded_df = df.explode("port_list")
 
-    df2: pd.DataFrame = df1.explode("port_list")
-    df2: pd.DataFrame = df2["port_list"].apply(pd.Series)
+    # Apply pd.Series to the 'port_list' column to convert it into separate columns
+    port_df = exploded_df['port_list'].apply(pd.Series)
 
-    df3: pd.DataFrame = df1.join(df2)
-    df3: pd.DataFrame = df3.drop("port_list", axis=1)
+    # Drop the original 'port_list' column from exploded_df
+    exploded_df = exploded_df.drop('port_list', axis=1)
 
-    return df3
+    # Join the new port columns with the exploded_df
+    result_df = pd.concat([exploded_df, port_df], axis=1)
+
+    return result_df
 
 
-def get_current_datetime():
+def get_current_datetime() -> Tuple[datetime.datetime, str]:
     """
     Gets the current time, and returns both
     the current time as a datetime object as well as
@@ -234,7 +243,7 @@ def get_current_datetime():
     return now, now.strftime("%Y-%m-%d_%H:%M:%S")
 
 
-def main():
+def main() -> None:
     """
     This is the programs main function/entrypoint.
 
