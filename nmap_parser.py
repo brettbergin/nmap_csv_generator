@@ -164,7 +164,7 @@ def parse_nmap_xml(root: str) -> pd.DataFrame:
     return pd.DataFrame(scan_results)
 
 
-def get_xml_tree_root(xmlfile: str) -> ET.parse.getroot:
+def get_xml_tree_root(xmlfile: str):
     """_summary_
 
     Args:
@@ -190,7 +190,7 @@ def get_xml_tree_root(xmlfile: str) -> ET.parse.getroot:
         raise Exception(f'Unknown Error Parsing XML file: {err}') from err
 
 
-def transform_data(data, run_time):
+def transform_data(data: str, run_time: str) -> pd.DataFrame:
     """
     This function performs multiple things:
     1. Calls the function that parses the XML and returns a pandas dataframe.
@@ -207,14 +207,14 @@ def transform_data(data, run_time):
         _type_: returns a pd.Dataframe of the transformed data.
     """
 
-    df1 = parse_nmap_xml(data)
+    df1: pd.DataFrame = parse_nmap_xml(data)
     df1["run_time"] = run_time
 
-    df2 = df1.explode("port_list")
-    df2 = df2["port_list"].apply(pd.Series)
+    df2: pd.DataFrame = df1.explode("port_list")
+    df2: pd.DataFrame = df2["port_list"].apply(pd.Series)
 
-    df3 = df1.join(df2)
-    df3 = df3.drop("port_list", axis=1)
+    df3: pd.DataFrame = df1.join(df2)
+    df3: pd.DataFrame = df3.drop("port_list", axis=1)
 
     return df3
 
