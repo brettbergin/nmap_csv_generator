@@ -78,7 +78,9 @@ def fetch_args() -> argparse.Namespace:
         _type_: ArgumentParser object
     """
 
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(description="NMAP XML to CVS Parser.")
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+        description="NMAP XML to CVS Parser."
+    )
 
     parser.add_argument(
         "--xml_file", "-f", type=str, help="The XML input file (required)"
@@ -100,7 +102,7 @@ def parse_nmap_xml(root: ET.Element) -> pd.DataFrame:
     a pandas Dataframe object to handle later on.
 
     Args:
-        root (_type_): string(xml file path)
+        root (_type_): ET.ELement
 
     Returns:
         _type_: Pandas DataFrame
@@ -115,17 +117,27 @@ def parse_nmap_xml(root: ET.Element) -> pd.DataFrame:
         if status is not None:
             _h["state"] = status.get("state") or ""
             _h["state_reason"] = status.get("reason") or ""
+        else:
+            _h["state"] = ""
+            _h["state_reason"] = ""
 
         _os = host.find("os")
         if _os is not None:
             _os_match = _os.find("osmatch")
             if _os_match is not None:
                 _h["os_name"] = _os_match.get("name") or ""
+            else:
+                _h["os_name"] = ""
+        else:
+            _h["os_name"] = ""
 
         address = host.find("address")
         if address is not None:
             _h["ip_address"] = address.get("addr") or ""
             _h["ip_address_type"] = address.get("addrtype") or ""
+        else:
+            _h["ip_address"] = ""
+            _h["ip_address_type"] = ""
 
         hostnames = host.find("hostnames")
         if hostnames is not None:
@@ -133,6 +145,9 @@ def parse_nmap_xml(root: ET.Element) -> pd.DataFrame:
             if hostname is not None:
                 _h["dns_record"] = hostname.get("name") or "None Found"
                 _h["dns_record_type"] = hostname.get("type") or "N/A"
+            else:
+                _h["dns_record"] = ""
+                _h["dns_record_type"] = ""
 
         port_list: list = []
         for port in host.findall(".//port"):
@@ -143,6 +158,8 @@ def parse_nmap_xml(root: ET.Element) -> pd.DataFrame:
             port_state = port.find("state")
             if port_state is not None:
                 _p["port_state"] = port_state.get("state") or "N/A"
+            else:
+                _p["port_state"] = ""
 
             port_service = port.find("service")
             if port_service is not None:
@@ -154,8 +171,16 @@ def parse_nmap_xml(root: ET.Element) -> pd.DataFrame:
 
                 cpe = port_service.find("cpe")
                 if cpe is not None:
-                    cpe_text_data = cpe.text.replace("\t", "").replace("\n", "")
-                    _p["service_cpe"] = f"{cpe_text_data or "N/A"}"
+                    _p["service_cpe"] = cpe.text.replace("\t", "").replace("\n", "")
+                else:
+                    _p["service_cpe"] = ""
+
+            else:
+                _p["service_name"] = ""
+                _p["service_product"] = ""
+                _p["service_tunnel"] = ""
+                _p["service_method"] = ""
+                _p["service_conf"] = ""
 
             port_list.append(_p)
 
@@ -185,10 +210,10 @@ def get_xml_tree_root(xmlfile: str) -> ET.Element:
         return root
 
     except FileNotFoundError as fnf_err:
-        raise FileNotFoundError(f'Unable to find file. Error: {fnf_err}') from fnf_err
+        raise FileNotFoundError(f"Unable to find file. Error: {fnf_err}") from fnf_err
 
     except Exception as err:
-        raise Exception(f'Unknown Error Parsing XML file: {err}') from err
+        raise Exception(f"Unknown Error Parsing XML file: {err}") from err
 
 
 def transform_data(data: ET.Element, run_time: str) -> pd.DataFrame:
@@ -207,9 +232,9 @@ def transform_data(data: ET.Element, run_time: str) -> pd.DataFrame:
     Returns:
         _type_: returns a pd.Dataframe of the transformed data.
     """
-    # Create a dataframe from the nmap xml file data.    
+    # Create a dataframe from the nmap xml file data.
     df: pd.DataFrame = parse_nmap_xml(data)
-    
+
     # Add a column 'run_time' so we know when this script was ran.
     df["run_time"] = run_time
 
@@ -217,10 +242,10 @@ def transform_data(data: ET.Element, run_time: str) -> pd.DataFrame:
     exploded_df = df.explode("port_list")
 
     # Apply pd.Series to the 'port_list' column to convert it into separate columns
-    port_df = exploded_df['port_list'].apply(pd.Series)
+    port_df = exploded_df["port_list"].apply(pd.Series)
 
     # Drop the original 'port_list' column from exploded_df
-    exploded_df = exploded_df.drop('port_list', axis=1)
+    exploded_df = exploded_df.drop("port_list", axis=1)
 
     # Join the new port columns with the exploded_df
     result_df = pd.concat([exploded_df, port_df], axis=1)
