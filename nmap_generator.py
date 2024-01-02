@@ -1,6 +1,6 @@
 #!/usr/bin env python3
 
-"""
+__doc__ = """
 This script is meant to help transform an nmap xml scan result file
 and create a new csv file with line items of hosts and the open ports/services
 that are discovered during the scan. The goal of this script was to learn more
@@ -68,7 +68,7 @@ from typing import Tuple, List, Dict, Union
 import pandas as pd
 
 
-def fetch_args() -> argparse.Namespace:
+def fetch_args(args=None) -> argparse.Namespace:
     """
     This function parses the command line arguments
     provided by the user and returns the parsed arguments
@@ -90,7 +90,13 @@ def fetch_args() -> argparse.Namespace:
     group.add_argument("--csv", "-c", type=str, help="The CSV output file")
     group.add_argument("--json", "-j", type=str, help="The JSON output file")
 
-    return parser.parse_args()
+    return parser.parse_args(args)
+
+
+def get_element_text(element, path: str, default: str = "") -> str:
+    """Helper function to get text from an element"""
+    found = element.find(path)
+    return found.get('addr') if found is not None else default
 
 
 def parse_nmap_xml(root: ET.Element) -> pd.DataFrame:
@@ -108,87 +114,37 @@ def parse_nmap_xml(root: ET.Element) -> pd.DataFrame:
         _type_: Pandas DataFrame
     """
 
-    scan_results: list = []
+    def parse_host_info(host):
+        """Nested function to parse host information."""
 
-    for host in root.findall("host"):
-        _h: Dict[str, Union[str, List[Dict[str, str]]]] = {}
-
-        status = host.find("status")
-        if status is not None:
-            _h["state"] = status.get("state") or ""
-            _h["state_reason"] = status.get("reason") or ""
-        else:
-            _h["state"] = ""
-            _h["state_reason"] = ""
-
-        _os = host.find("os")
-        if _os is not None:
-            _os_match = _os.find("osmatch")
-            if _os_match is not None:
-                _h["os_name"] = _os_match.get("name") or ""
-            else:
-                _h["os_name"] = ""
-        else:
-            _h["os_name"] = ""
-
-        address = host.find("address")
-        if address is not None:
-            _h["ip_address"] = address.get("addr") or ""
-            _h["ip_address_type"] = address.get("addrtype") or ""
-        else:
-            _h["ip_address"] = ""
-            _h["ip_address_type"] = ""
-
-        hostnames = host.find("hostnames")
-        if hostnames is not None:
-            hostname = hostnames.find("hostname")
-            if hostname is not None:
-                _h["dns_record"] = hostname.get("name") or "None Found"
-                _h["dns_record_type"] = hostname.get("type") or "N/A"
-            else:
-                _h["dns_record"] = ""
-                _h["dns_record_type"] = ""
-
-        port_list: list = []
+        host_info = {
+            "state": host.find("status").get("state", "") if host.find("status") is not None else "",
+            "state_reason": host.find("status").get("reason", "") if host.find("status") is not None else "",
+            "os_name": host.find("os/osmatch").get("name", "") if host.find("os/osmatch") is not None else "",
+            "ip_address": host.find("address[@addrtype='ipv4']").get("addr", "") if host.find("address[@addrtype='ipv4']") is not None else "",
+            "ip_address_type": "ipv4",
+            "dns_record": host.find("hostnames/hostname").get("name", "None Found") if host.find("hostnames/hostname") is not None else "",
+            "dns_record_type": host.find("hostnames/hostname").get("type", "N/A") if host.find("hostnames/hostname") is not None else "",
+            "port_list": []
+        }
+        
         for port in host.findall(".//port"):
-            _p: Dict[str, str] = {}
-            _p["protocol"] = port.get("protocol") or "N/A"
-            _p["port"] = port.get("portid") or "N/A"
-
-            port_state = port.find("state")
-            if port_state is not None:
-                _p["port_state"] = port_state.get("state") or "N/A"
-            else:
-                _p["port_state"] = ""
-
-            port_service = port.find("service")
-            if port_service is not None:
-                _p["service_name"] = port_service.get("name") or "N/A"
-                _p["service_product"] = port_service.get("product") or "N/A"
-                _p["service_tunnel"] = port_service.get("tunnel") or "N/A"
-                _p["service_method"] = port_service.get("method") or "N/A"
-                _p["service_conf"] = port_service.get("conf") or "N/A"
-
-                cpe = port_service.find("cpe")
-                if cpe is not None:
-                    _p["service_cpe"] = cpe.text.replace("\t", "").replace("\n", "")
-                else:
-                    _p["service_cpe"] = ""
-
-            else:
-                _p["service_name"] = ""
-                _p["service_product"] = ""
-                _p["service_tunnel"] = ""
-                _p["service_method"] = ""
-                _p["service_conf"] = ""
-
-            port_list.append(_p)
-
-        _h["port_list"] = port_list
-        scan_results.append(_h)
-
+            port_info = {
+                "protocol": port.get("protocol", "N/A"),
+                "port": port.get("portid", "N/A"),
+                "port_state": port.find("state").get("state", "N/A") if port.find("state") is not None else "",
+                "service_name": port.find("service").get("name", "N/A") if port.find("service") is not None else "",
+                "service_product": port.find("service").get("product", "N/A") if port.find("service") is not None else "",
+                "service_tunnel": port.find("service").get("tunnel", "N/A") if port.find("service") is not None else "",
+                "service_method": port.find("service").get("method", "N/A") if port.find("service") is not None else "",
+                "service_conf": port.find("service").get("conf", "N/A") if port.find("service") is not None else "",
+                "service_cpe": port.find("service/cpe").text.replace("\t", "").replace("\n", "") if port.find("service/cpe") is not None else ""
+            }
+            host_info["port_list"].append(port_info)
+        return host_info
+    
+    scan_results = [parse_host_info(host) for host in root.findall("host")]
     return pd.DataFrame(scan_results)
-
 
 def get_xml_tree_root(xmlfile: str) -> ET.Element:
     """_summary_
@@ -232,6 +188,9 @@ def transform_data(data: ET.Element, run_time: str) -> pd.DataFrame:
     Returns:
         _type_: returns a pd.Dataframe of the transformed data.
     """
+    if not isinstance(data, ET.Element):
+        raise ValueError("data argument must be an element tree from ET.")
+
     # Create a dataframe from the nmap xml file data.
     df: pd.DataFrame = parse_nmap_xml(data)
 

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<nmaprun scanner="nmap" start="1703822602" startstr="Thu Dec 28 20:03:22 2023" version="7.94" xmloutputversion="1.05">
+	<scaninfo type="syn" protocol="tcp" numservices="1000"/>
+ 
+	<host starttime="1703822608" endtime="1703826412">
+		<status state="up" reason="arp-response" reason_ttl="0" />
+		<address addr="10.250.100.1" addrtype="ipv4" />
+		<address addr="90:EC:77:35:F8:14" addrtype="mac" vendor="silicom" />
+  
+		<hostnames>
+			<hostname name="x.example.com" type="PTR" />
+		</hostnames>
+  
+		<ports>
+
+			<port protocol="tcp" portid="22">
+				<state state="open" reason="syn-ack" reason_ttl="64" />
+				<service name="ssh" product="OpenSSH" version="9.4" extrainfo="protocol 2.0" method="probed" conf="10">
+					<cpe>
+						cpe:/a:openbsd:openssh:9.4
+					</cpe>
+				</service>
+			</port>
+    
+			<port protocol="tcp" portid="80">
+				<state state="open" reason="syn-ack" reason_ttl="64" />
+				<service name="http" product="nginx" method="probed" conf="10">
+					<cpe>
+						cpe:/a:igor_sysoev:nginx
+					</cpe>
+				</service>
+			</port>
+   
+			<port protocol="tcp" portid="443">
+				<state state="open" reason="syn-ack" reason_ttl="64" />
+				<service name="http" product="nginx" tunnel="ssl" method="probed" conf="10">
+					<cpe>
+						cpe:/a:igor_sysoev:nginx
+					</cpe>
+				</service>
+			</port>
+   
+		</ports>
+	</host>
+ </nmaprun>
