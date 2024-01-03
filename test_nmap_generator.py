@@ -11,6 +11,8 @@ from nmap_generator import get_xml_tree_root
 from nmap_generator import fetch_args
 from nmap_generator import transform_data
 from nmap_generator import parse_nmap_xml
+from nmap_generator import parse_host_info
+
 
 TEST_DATA = {
     "xml_file_valid": "test_nmap_data.xml",
@@ -79,13 +81,6 @@ class TestGetXMLTreeRoot:
 
 
 class TestParseNmapXML:
-    def test_parse_nmap_xml(self):
-        test_xml_root = get_xml_tree_root(TEST_DATA["xml_file_valid"])
-        test_df = parse_nmap_xml(root=test_xml_root)
-        assert isinstance(test_df, pd.DataFrame)
-
-
-class TestParseNmapXML:
     test_xml_root = get_xml_tree_root(TEST_DATA["xml_file_valid"])
 
     def test_parse_nmap_xml_returns_df(self):
@@ -121,3 +116,15 @@ class TestTransformData:
         with pytest.raises(ValueError) as excinfo:
             transform_data(data=1, run_time=self.test_time)
         assert str(excinfo.value) == "data argument must be an element tree from ET."
+
+
+class TestParseHostInfo:
+    test_xml_root = get_xml_tree_root(TEST_DATA["xml_file_valid"])
+    parsed_hosts = test_xml_root.findall("host")
+
+    def test_parse_host_info(self):
+        # select only the first host to use in this test.
+        test_host = self.parsed_hosts[0]
+
+        output = parse_host_info(test_host)
+        assert isinstance(output, dict)
