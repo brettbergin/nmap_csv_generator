@@ -177,6 +177,8 @@ def parse_nmap_xml(root: ET.Element) -> pd.DataFrame:
     Returns:
         _type_: Pandas DataFrame
     """
+    if not isinstance(root, ET.Element):
+        raise ValueError("root argument must be an elementtree.Element object.")
 
     scan_results = [parse_host_info(host) for host in root.findall("host")]
     return pd.DataFrame(scan_results)

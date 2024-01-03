@@ -85,11 +85,15 @@ class TestGetXMLTreeRoot:
 class TestParseNmapXML:
     test_xml_root = get_xml_tree_root(TEST_DATA["xml_file_valid"])
 
-    def test_parse_nmap_xml(self):
-        test_df = parse_nmap_xml(root=self.test_xml_root)
-        assert isinstance(test_df, pd.DataFrame)
+    def test_parse_nmap_xml_raises_value_error(self):
+        with pytest.raises(ValueError) as excinfo:
+            parse_nmap_xml("foo")
 
-    def test_parse_nmap_xml_returns_df(self):
+        assert (
+            str(excinfo.value) == "root argument must be an elementtree.Element object."
+        )
+
+    def test_parse_nmap_xml(self):
         test_df = parse_nmap_xml(root=self.test_xml_root)
         assert isinstance(test_df, pd.DataFrame)
 
