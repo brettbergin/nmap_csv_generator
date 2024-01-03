@@ -63,7 +63,7 @@ Example XML Document Schema:
 import argparse
 import datetime
 import xml.etree.ElementTree as ET
-from typing import Tuple, List, Dict, Union
+from typing import Tuple
 
 import pandas as pd
 
@@ -96,7 +96,7 @@ def fetch_args(args=None) -> argparse.Namespace:
 def get_element_text(element, path: str, default: str = "") -> str:
     """Helper function to get text from an element"""
     found = element.find(path)
-    return found.get('addr') if found is not None else default
+    return found.get("addr") if found is not None else default
 
 
 def parse_nmap_xml(root: ET.Element) -> pd.DataFrame:
@@ -118,33 +118,76 @@ def parse_nmap_xml(root: ET.Element) -> pd.DataFrame:
         """Nested function to parse host information."""
 
         host_info = {
-            "state": host.find("status").get("state", "") if host.find("status") is not None else "",
-            "state_reason": host.find("status").get("reason", "") if host.find("status") is not None else "",
-            "os_name": host.find("os/osmatch").get("name", "") if host.find("os/osmatch") is not None else "",
-            "ip_address": host.find("address[@addrtype='ipv4']").get("addr", "") if host.find("address[@addrtype='ipv4']") is not None else "",
+            "state": host.find("status").get("state", "")
+            if host.find("status") is not None
+            else "",
+            
+            "state_reason": host.find("status").get("reason", "")
+            if host.find("status") is not None
+            else "",
+            
+            "os_name": host.find("os/osmatch").get("name", "")
+            if host.find("os/osmatch") is not None
+            else "",
+            
+            "ip_address": host.find("address[@addrtype='ipv4']").get("addr", "")
+            if host.find("address[@addrtype='ipv4']") is not None
+            else "",
+            
             "ip_address_type": "ipv4",
-            "dns_record": host.find("hostnames/hostname").get("name", "None Found") if host.find("hostnames/hostname") is not None else "",
-            "dns_record_type": host.find("hostnames/hostname").get("type", "N/A") if host.find("hostnames/hostname") is not None else "",
-            "port_list": []
+            "dns_record": host.find("hostnames/hostname").get("name", "None Found")
+            if host.find("hostnames/hostname") is not None
+            else "",
+            
+            "dns_record_type": host.find("hostnames/hostname").get("type", "N/A")
+            if host.find("hostnames/hostname") is not None
+            else "",
+            
+            "port_list": [],
         }
-        
+
         for port in host.findall(".//port"):
             port_info = {
                 "protocol": port.get("protocol", "N/A"),
+                
                 "port": port.get("portid", "N/A"),
-                "port_state": port.find("state").get("state", "N/A") if port.find("state") is not None else "",
-                "service_name": port.find("service").get("name", "N/A") if port.find("service") is not None else "",
-                "service_product": port.find("service").get("product", "N/A") if port.find("service") is not None else "",
-                "service_tunnel": port.find("service").get("tunnel", "N/A") if port.find("service") is not None else "",
-                "service_method": port.find("service").get("method", "N/A") if port.find("service") is not None else "",
-                "service_conf": port.find("service").get("conf", "N/A") if port.find("service") is not None else "",
-                "service_cpe": port.find("service/cpe").text.replace("\t", "").replace("\n", "") if port.find("service/cpe") is not None else ""
+                
+                "port_state": port.find("state").get("state", "N/A")
+                if port.find("state") is not None
+                else "",
+                
+                "service_name": port.find("service").get("name", "N/A")
+                if port.find("service") is not None
+                else "",
+                
+                "service_product": port.find("service").get("product", "N/A")
+                if port.find("service") is not None
+                else "",
+                
+                "service_tunnel": port.find("service").get("tunnel", "N/A")
+                if port.find("service") is not None
+                else "",
+                
+                "service_method": port.find("service").get("method", "N/A")
+                if port.find("service") is not None
+                else "",
+                
+                "service_conf": port.find("service").get("conf", "N/A")
+                if port.find("service") is not None
+                else "",
+                
+                "service_cpe": port.find("service/cpe")
+                .text.replace("\t", "")
+                .replace("\n", "")
+                if port.find("service/cpe") is not None
+                else "",
             }
             host_info["port_list"].append(port_info)
         return host_info
-    
+
     scan_results = [parse_host_info(host) for host in root.findall("host")]
     return pd.DataFrame(scan_results)
+
 
 def get_xml_tree_root(xmlfile: str) -> ET.Element:
     """_summary_
