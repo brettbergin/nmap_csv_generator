@@ -63,12 +63,12 @@ Example XML Document Schema:
 import argparse
 import datetime
 import xml.etree.ElementTree as ET
-from typing import Tuple, List, Dict, Union
+from typing import Tuple
 
 import pandas as pd
 
 
-def fetch_args(args=None) -> argparse.Namespace:
+def fetch_args(args: None = None) -> argparse.Namespace:
     """
     This function parses the command line arguments
     provided by the user and returns the parsed arguments
@@ -93,10 +93,74 @@ def fetch_args(args=None) -> argparse.Namespace:
     return parser.parse_args(args)
 
 
-def get_element_text(element, path: str, default: str = "") -> str:
-    """Helper function to get text from an element"""
-    found = element.find(path)
-    return found.get("addr") if found is not None else default
+def parse_host_info(host: ET.Element) -> dict:
+    """
+    This function accepts an xml elementtree element and
+    parses it into a dictionary object data structure.
+    The dictionary is returned to to the function caller.
+
+    Args:
+    - host: ET.Element
+
+    Returns:
+    - host_info: dict
+    """
+    if not isinstance(host, ET.Element):
+        raise ValueError("Host argument must be an elementtree.Element object.")
+
+    host_info = {
+        "state": host.find("status").get("state", "")
+        if host.find("status") is not None
+        else "",
+        "state_reason": host.find("status").get("reason", "")
+        if host.find("status") is not None
+        else "",
+        "os_name": host.find("os/osmatch").get("name", "")
+        if host.find("os/osmatch") is not None
+        else "",
+        "ip_address": host.find("address[@addrtype='ipv4']").get("addr", "")
+        if host.find("address[@addrtype='ipv4']") is not None
+        else "",
+        "ip_address_type": "ipv4",
+        "dns_record": host.find("hostnames/hostname").get("name", "None Found")
+        if host.find("hostnames/hostname") is not None
+        else "",
+        "dns_record_type": host.find("hostnames/hostname").get("type", "N/A")
+        if host.find("hostnames/hostname") is not None
+        else "",
+        "port_list": [],
+    }
+
+    for port in host.findall(".//port"):
+        port_info = {
+            "protocol": port.get("protocol", "N/A"),
+            "port": port.get("portid", "N/A"),
+            "port_state": port.find("state").get("state", "N/A")
+            if port.find("state") is not None
+            else "",
+            "service_name": port.find("service").get("name", "N/A")
+            if port.find("service") is not None
+            else "",
+            "service_product": port.find("service").get("product", "N/A")
+            if port.find("service") is not None
+            else "",
+            "service_tunnel": port.find("service").get("tunnel", "N/A")
+            if port.find("service") is not None
+            else "",
+            "service_method": port.find("service").get("method", "N/A")
+            if port.find("service") is not None
+            else "",
+            "service_conf": port.find("service").get("conf", "N/A")
+            if port.find("service") is not None
+            else "",
+            "service_cpe": port.find("service/cpe")
+            .text.replace("\t", "")
+            .replace("\n", "")
+            if port.find("service/cpe") is not None
+            else "",
+        }
+        host_info["port_list"].append(port_info)
+    return host_info
 
 
 def parse_nmap_xml(root: ET.Element) -> pd.DataFrame:
@@ -114,79 +178,9 @@ def parse_nmap_xml(root: ET.Element) -> pd.DataFrame:
         _type_: Pandas DataFrame
     """
 
-    def parse_host_info(host):
-        """Nested function to parse host information."""
-
-        host_info = {
-            "state": host.find("status").get("state", "")
-            if host.find("status") is not None
-            else "",
-            
-            "state_reason": host.find("status").get("reason", "")
-            if host.find("status") is not None
-            else "",
-            
-            "os_name": host.find("os/osmatch").get("name", "")
-            if host.find("os/osmatch") is not None
-            else "",
-            
-            "ip_address": host.find("address[@addrtype='ipv4']").get("addr", "")
-            if host.find("address[@addrtype='ipv4']") is not None
-            else "",
-            
-            "ip_address_type": "ipv4",
-            "dns_record": host.find("hostnames/hostname").get("name", "None Found")
-            if host.find("hostnames/hostname") is not None
-            else "",
-            
-            "dns_record_type": host.find("hostnames/hostname").get("type", "N/A")
-            if host.find("hostnames/hostname") is not None
-            else "",
-            
-            "port_list": [],
-        }
-
-        for port in host.findall(".//port"):
-            port_info = {
-                "protocol": port.get("protocol", "N/A"),
-                
-                "port": port.get("portid", "N/A"),
-                
-                "port_state": port.find("state").get("state", "N/A")
-                if port.find("state") is not None
-                else "",
-                
-                "service_name": port.find("service").get("name", "N/A")
-                if port.find("service") is not None
-                else "",
-                
-                "service_product": port.find("service").get("product", "N/A")
-                if port.find("service") is not None
-                else "",
-                
-                "service_tunnel": port.find("service").get("tunnel", "N/A")
-                if port.find("service") is not None
-                else "",
-                
-                "service_method": port.find("service").get("method", "N/A")
-                if port.find("service") is not None
-                else "",
-                
-                "service_conf": port.find("service").get("conf", "N/A")
-                if port.find("service") is not None
-                else "",
-                
-                "service_cpe": port.find("service/cpe")
-                .text.replace("\t", "")
-                .replace("\n", "")
-                if port.find("service/cpe") is not None
-                else "",
-            }
-            host_info["port_list"].append(port_info)
-        return host_info
-
     scan_results = [parse_host_info(host) for host in root.findall("host")]
     return pd.DataFrame(scan_results)
+
 
 def get_xml_tree_root(xmlfile: str) -> ET.Element:
     """_summary_
@@ -269,6 +263,55 @@ def get_current_datetime() -> Tuple[datetime.datetime, str]:
     return now, now.strftime("%Y-%m-%d_%H:%M:%S")
 
 
+def export_results(data_frame: pd.DataFrame, output_file: str, output_type: str):
+    """
+    This function will export the results of the nmap data based on the output type
+    the was requested by the program executor.
+
+    Args:
+    - data_frame: A dataframe we plan to export to a file.
+    - output_type: the type of output file format we plan to use.
+    - output_file: the filename of the outputfile we plan to use.
+
+    Return: output_type
+    """
+
+    print(f"[+] Writing output type: {output_type} to file: {output_file}.")
+
+    if output_type == "csv":
+        data_frame.to_csv(output_file, index=False)
+
+    if output_type == "json":
+        data_frame.to_json(output_file, indent=2, index=False, orient="table")
+
+    return output_type
+
+
+def determine_output_type(args_csv: str, args_json: str) -> str:
+    """
+    Determines the output file format based on the provided arguments.
+
+    Args:
+        args_csv (str): The file path for CSV output, or None.
+        args_json (str): The file path for JSON output, or None.
+
+    Returns:
+        str: 'csv' if CSV output is specified, 'json' if JSON output is specified,
+             or 'csv' by default if neither is specified.
+    """
+    if args_csv is not None and args_json is not None:
+        raise ValueError(
+            "Both CSV and JSON output types cannot be specified at the same time."
+        )
+
+    if args_csv is not None:
+        return "csv", args_csv
+    elif args_json is not None:
+        return "json", args_json
+    else:
+        raise ValueError("Output type must be specified.")
+
+
 def main() -> None:
     """
     This is the programs main function/entrypoint.
@@ -287,17 +330,18 @@ def main() -> None:
     xml_data = get_xml_tree_root(args.xml_file)
     df = transform_data(xml_data, run_time=start_time)
 
-    if args.csv:
-        print(f"[+] Writing output to CSV file: {args.csv}.")
-        df.to_csv(args.csv, index=False)
-
-    if args.json:
-        print(f"[+] Writing output to JSON file: {args.json}.")
-        df.to_json(args.json, indent=2, index=False, orient="table")
+    output_type, output_file = determine_output_type(args.csv, args.json)
+    exc = export_results(
+        data_frame=df, output_type=output_type, output_file=output_file
+    )
 
     raw_stop, stop_time = get_current_datetime()
-    run_duration = raw_stop - raw_start
-    print(f"[+] Completed XML -> CSV @: {stop_time}. Duration: {run_duration}.")
+    duration = raw_stop - raw_start
+    minutes, seconds = divmod(duration.total_seconds(), 60)
+
+    message = f"[+] {stop_time}: Nmap XML > {exc.upper()} completed. "
+    message += f"Duration: {minutes} minutes and {round(seconds, 1)} seconds."
+    print(message)
 
 
 if __name__ == "__main__":
