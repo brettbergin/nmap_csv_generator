@@ -20,7 +20,7 @@ Example XML Document Schema:
 	<host starttime="1703822608" endtime="1703826412">
 		<status state="up" reason="arp-response" reason_ttl="0" />
 		<address addr="10.250.100.1" addrtype="ipv4" />
-		<address addr="90:EC:77:35:F8:14" addrtype="mac" vendor="silicom" />
+		<address addr="AA:AA:AA:FF:FF:FF" addrtype="mac" vendor="silicom" />
   
 		<hostnames>
 			<hostname name="x.example.com" type="PTR" />
