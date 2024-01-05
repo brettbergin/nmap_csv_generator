@@ -15,24 +15,34 @@ from nmap_generator import parse_host_info
 from nmap_generator import export_results
 from nmap_generator import determine_output_type
 
-
-TEST_DATA = {
+# Defines the XML files used during tesing.
+TEST_INPUT_DATA = {
     "xml_file_valid": "test_nmap_data.xml",
     "xml_file_invalid": "not-a-valid.xml",
+}
+
+# Defined the output file used during testing.
+TEST_OUTPUT_DATA = {
+    "csv": "test.csv",
+    "json": "test.json",
 }
 
 
 class TestFetchArgs:
     def test_fetch_args_with_valid_csv(self):
-        parsed_args = fetch_args(["-f", "input.xml", "-c", "output.csv"])
+        parsed_args = fetch_args(
+            ["-f", "input.xml", "-c", f"{TEST_OUTPUT_DATA['csv']}"]
+        )
         assert parsed_args.xml_file == "input.xml"
-        assert parsed_args.csv == "output.csv"
+        assert parsed_args.csv == TEST_OUTPUT_DATA["csv"]
         assert parsed_args.json is None
 
     def test_fetch_args_with_valid_json(self):
-        parsed_args = fetch_args(["-f", "input.xml", "--json", "output.json"])
+        parsed_args = fetch_args(
+            ["-f", "input.xml", "--json", f"{TEST_OUTPUT_DATA['json']}"]
+        )
         assert parsed_args.xml_file == "input.xml"
-        assert parsed_args.json == "output.json"
+        assert parsed_args.json == TEST_OUTPUT_DATA["json"]
         assert parsed_args.csv is None
 
     def test_fetch_args_without_required_args(self):
@@ -41,7 +51,16 @@ class TestFetchArgs:
 
     def test_fetch_args_with_mutually_exclusive_args(self):
         with pytest.raises(SystemExit):
-            fetch_args(["-f", "input.xml", "-c", "output.csv", "-j", "output.json"])
+            fetch_args(
+                [
+                    "-f",
+                    "input.xml",
+                    "--csv",
+                    f"{TEST_OUTPUT_DATA['csv']}",
+                    "--json",
+                    f"{TEST_OUTPUT_DATA['json']}",
+                ]
+            )
 
 
 class TestGetCurrentDatetime:
@@ -74,16 +93,16 @@ class TestGetCurrentDatetime:
 
 class TestGetXMLTreeRoot:
     def test_get_xml_tree_root(self):
-        test_root = get_xml_tree_root(xmlfile=TEST_DATA["xml_file_valid"])
+        test_root = get_xml_tree_root(xmlfile=TEST_INPUT_DATA["xml_file_valid"])
         assert isinstance(test_root, ET.Element)
 
     def test_get_xml_tree_root_raises_fnf_err(self):
         with pytest.raises(FileNotFoundError):
-            get_xml_tree_root(xmlfile=TEST_DATA["xml_file_invalid"])
+            get_xml_tree_root(xmlfile=TEST_INPUT_DATA["xml_file_invalid"])
 
 
 class TestParseNmapXML:
-    test_xml_root = get_xml_tree_root(TEST_DATA["xml_file_valid"])
+    test_xml_root = get_xml_tree_root(TEST_INPUT_DATA["xml_file_valid"])
 
     def test_parse_nmap_xml_raises_value_error(self):
         with pytest.raises(ValueError) as excinfo:
@@ -118,7 +137,7 @@ class TestTransformData:
     test_time = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 
     def test_tansformer(self):
-        test_root = get_xml_tree_root(TEST_DATA["xml_file_valid"])
+        test_root = get_xml_tree_root(TEST_INPUT_DATA["xml_file_valid"])
         df = transform_data(data=test_root, run_time=self.test_time)
         assert isinstance(df, pd.DataFrame)
 
@@ -151,7 +170,7 @@ class TestDetermineOutputType:
 
 
 class TestParseHostInfo:
-    test_root = get_xml_tree_root(xmlfile=TEST_DATA["xml_file_valid"])
+    test_root = get_xml_tree_root(xmlfile=TEST_INPUT_DATA["xml_file_valid"])
     test_hosts = test_root.findall("host")
     test_host = test_hosts[0]
 
@@ -168,21 +187,23 @@ class TestParseHostInfo:
 
 
 class TestExportResults:
-    test_root = get_xml_tree_root(xmlfile=TEST_DATA["xml_file_valid"])
+    test_root = get_xml_tree_root(xmlfile=TEST_INPUT_DATA["xml_file_valid"])
     test_df = parse_nmap_xml(test_root)
-    test_csv_output_filename = "test.csv"
-    test_json_output_filename = "test.json"
 
     def test_export_results_as_csv(self):
-        export_results(
+        er = export_results(
             data_frame=self.test_df,
-            output_file=self.test_csv_output_filename,
+            output_file=TEST_OUTPUT_DATA["csv"],
             output_type="csv",
         )
+        assert isinstance(er, str)
+        assert er == "csv"
 
     def test_export_results_as_json(self):
-        export_results(
+        er = export_results(
             data_frame=self.test_df,
-            output_file=self.test_json_output_filename,
+            output_file=TEST_OUTPUT_DATA["json"],
             output_type="json",
         )
+        assert isinstance(er, str)
+        assert er == "json"
