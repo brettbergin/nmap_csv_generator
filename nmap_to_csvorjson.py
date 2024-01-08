@@ -316,9 +316,7 @@ def determine_output_type(args_csv: str, args_json: str) -> str:
 
 
 def finish(exec, start):
-    """
-    
-    """
+    """ """
 
     raw_stop, stop_time = get_current_datetime()
 
