@@ -60,6 +60,7 @@ Example XML Document Schema:
  </nmaprun>
 """
 
+import json
 import argparse
 import datetime
 import xml.etree.ElementTree as ET
@@ -314,6 +315,21 @@ def determine_output_type(args_csv: str, args_json: str) -> str:
         raise ValueError("Output type must be specified.")
 
 
+def finish(exec, start):
+    """
+    
+    """
+
+    raw_stop, stop_time = get_current_datetime()
+
+    duration = raw_stop - start
+    minutes, seconds = divmod(duration.total_seconds(), 60)
+
+    message = f"[+] {stop_time}: Nmap XML > {exec.upper()} completed. "
+    message += f"Duration: {minutes} minutes and {round(seconds, 3)} seconds."
+    print(message)
+
+
 def main() -> None:
     """
     This is the programs main function/entrypoint.
@@ -337,13 +353,7 @@ def main() -> None:
         data_frame=df, output_type=output_type, output_file=output_file
     )
 
-    raw_stop, stop_time = get_current_datetime()
-    duration = raw_stop - raw_start
-    minutes, seconds = divmod(duration.total_seconds(), 60)
-
-    message = f"[+] {stop_time}: Nmap XML > {exc.upper()} completed. "
-    message += f"Duration: {minutes} minutes and {round(seconds, 1)} seconds."
-    print(message)
+    finish(exc, raw_start)
 
 
 if __name__ == "__main__":
