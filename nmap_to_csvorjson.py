@@ -315,15 +315,23 @@ def determine_output_type(args_csv: str, args_json: str) -> str:
         raise ValueError("Output type must be specified.")
 
 
+def start():
+    """ """
+    raw_start, start_time = get_current_datetime()
+    print(f"[+] Starting Nmap XML parser @: {start_time}.")
+
+    args = fetch_args()
+    return args, raw_start, start_time
+
+
 def finish(exec, start):
     """ """
-
     raw_stop, stop_time = get_current_datetime()
 
     duration = raw_stop - start
     minutes, seconds = divmod(duration.total_seconds(), 60)
 
-    message = f"[+] {stop_time}: Nmap XML > {exec.upper()} completed. "
+    message = f"[+] {stop_time}: Nmap XML >>> {exec.upper()} completed. "
     message += f"Duration: {minutes} minutes and {round(seconds, 3)} seconds."
     print(message)
 
@@ -334,10 +342,7 @@ def main() -> None:
 
     Returns: None
     """
-    raw_start, start_time = get_current_datetime()
-    print(f"[+] Starting Nmap XML parser @: {start_time}.")
-
-    args = fetch_args()
+    args, raw_start, start_time = start()
     if not args.xml_file:
         print("[-] No provided xml file. See help. Quitting.")
         return
